@@ -29,3 +29,105 @@ Metrics Server
 Metrics Server Git Hub
 
 For the broader view of monitoring in Kubernetes take a look into Monitoring architecture
+===
+created in this namespase
+
+kubectl get pod -n kube-system #check if running
+
+create a resoure to test
+# Deployment
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hpadeployment
+  labels:
+    name: hpadeployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: hpapod
+  template:
+    metadata:
+      labels:
+        name: hpapod
+    spec:
+      containers:
+        - name: hpacontainer
+          image: k8s.gcr.io/hpa-example
+          ports:
+          - name: http
+            containerPort: 80
+          resources:
+            requests:
+              cpu: "32m"
+              memory: "32Mi"
+            limits:
+              cpu: "32m"
+              memory: "65Mi"
+# HPA For above deployment(hpadeployment)
+---
+apiVersion: autoscaling/v2beta1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: hpadeploymentautoscaler
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: hpadeployment
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+    - resource:
+        name: cpu
+        targetAverageUtilization: 50
+        type: Resource
+
+# Service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hpaclusterservice
+  labels:
+    name: hpaservice
+spec:
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    name: hpapod
+  type: ClusterIP
+
+===
+good job compile and test
+kubectl apply -f <name>
+
+Deploy all above three kubernetes objects.
+# ==== Execute below commands to increase load====
+
+Now, we will see how the auto scaler reacts to increased load. We will start a container, and send an infinite loop of queries to the php-apache service .
+
+# Create A Temp Pod in interactive mod to access app using service name
+$ kubectl run -i --tty load-generator --rm --image=busybox /bin/sh # docker run -it –name
+
+# Execute below command in Temp Pod
+$ while true; do wget -q -O- http://hpaclusterservice; done
+
+Open kubectl terminal in another tab and watch kubectl get pods or kubect get hpa to see how the auto scaler reacts to increased load.
+$ watch kubectl get hpa
+
+
+
+
+
+
+
+
+
+
+
+
+
